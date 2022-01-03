@@ -15,7 +15,9 @@ class INode
 public:
     virtual operator bool() const = 0;
     virtual void operator()() = 0;
+    virtual void run() = 0;
     virtual size_t getId() const = 0;
+    virtual std::list<size_t> getOutputs() const = 0;
 };
 
 
@@ -39,6 +41,8 @@ public:
 
     void operator()() override;
 
+    void run() override;
+
     template<int inputNumber, typename T>
     void inputComputedCallback(T &&val);
 
@@ -46,9 +50,12 @@ public:
 
     size_t getId() const override;
 
+    std::list<size_t> getOutputs() const override;
+
 private:
     std::optional<TOutput> result;
     std::tuple<TInputs...> inputs;
+    std::list<size_t> outputs;
     std::array<bool, sizeof...(TInputs)> inputsSet;
     TFunction function;
     std::list<TCallback> outputCallbacks;
@@ -95,6 +102,7 @@ void Node<TOutput, TInputs...>::connect(Node<TCurrentOutput, TCurrentInputs...> 
     outputCallbacks.push_back([&node](auto output){
         node.template inputComputedCallback<inputNumber>(std::forward<TOutput>(output));
     });
+    outputs.push_back(node.getId());
 }
 
 template<typename TOutput, typename ...TInputs>
@@ -104,7 +112,7 @@ Node<TOutput, TInputs...>::operator bool() const
 }
 
 template<typename TOutput, typename... TInputs>
-void Node<TOutput, TInputs...>::operator()()
+void Node<TOutput, TInputs...>::run()
 {
     if(*this)
     {
@@ -113,6 +121,12 @@ void Node<TOutput, TInputs...>::operator()()
     }
     else
         throw std::runtime_error("Some inputs are not initialized");
+}
+
+template<typename TOutput, typename... TInputs>
+void Node<TOutput, TInputs...>::operator()()
+{
+    run();
 }
 
 template<typename TOutput, typename... TInputs>
@@ -134,6 +148,13 @@ size_t Node<TOutput, TInputs...>::getId() const
 {
     return id;
 }
+
+template<typename TOutput, typename... TInputs>
+std::list<size_t> Node<TOutput, TInputs...>::getOutputs() const
+{
+    return outputs;
+}
+
 
 
 #endif //COMPUTATIONALGRAPH_CPP_NODE_HPP

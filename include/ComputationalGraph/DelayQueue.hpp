@@ -19,7 +19,7 @@ public:
 
     std::optional<T> pop();
 
-    T popWait();
+    std::optional<T> popWait(D emptyTimeout = std::chrono::milliseconds(10));
 
     size_t size() const;
     bool empty() const;
@@ -74,18 +74,23 @@ std::optional<T> DelayQueue<T, D, P>::pop()
 }
 
 template<typename T, typename D, typename P>
-T DelayQueue<T, D, P>::popWait()
+std::optional<T> DelayQueue<T, D, P>::popWait(D emptyTimeout)
 {
     std::unique_lock lock(queueMutex);
-    available.wait(lock, [this]{
-        return !priorityQueue.empty();
-    });
+    D delay;
+    while(priorityQueue.empty() || (delay = getDelay(priorityQueue.top())).count() > 0)
+    {
+        if(priorityQueue.empty())
+        {
+            available.wait_for(lock, emptyTimeout);
+            if(priorityQueue.empty())
+                return {};
+        }
+        else
+            available.wait_for(lock, delay);
+    }
 
     auto head = priorityQueue.top();
-    auto delay = getDelay(head);
-    available.wait_for(lock, delay, [&head, this]{return getDelay(priorityQueue.top()).count() <= 0;});
-
-    head = priorityQueue.top();
     priorityQueue.pop();
     if(!priorityQueue.empty())
         available.notify_one();

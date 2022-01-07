@@ -35,7 +35,7 @@ public:
     void setFunction(const TFunction &func);
 
     template<int inputNumber, typename TCurrentOutput, typename ...TCurrentInputs>
-    void connect(Node<TCurrentOutput, TCurrentInputs...> &node);
+    void connectTo(Node<TCurrentOutput, TCurrentInputs...> &node);
 
     operator bool() const override;
 
@@ -97,9 +97,9 @@ void Node<TOutput, TInputs...>::setFunction(const Node::TFunction &func)
 
 template<typename TOutput, typename... TInputs>
 template<int inputNumber, typename TCurrentOutput, typename ...TCurrentInputs>
-void Node<TOutput, TInputs...>::connect(Node<TCurrentOutput, TCurrentInputs...> &node)
+void Node<TOutput, TInputs...>::connectTo(Node<TCurrentOutput, TCurrentInputs...> &node)
 {
-    outputCallbacks.push_back([&node](auto output){
+    outputCallbacks.push_back([&node](TOutput &output){
         node.template inputComputedCallback<inputNumber>(std::forward<TOutput>(output));
     });
     outputs.push_back(node.getId());

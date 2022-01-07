@@ -32,10 +32,17 @@ public:
     Node(Node &&node) noexcept;
     Node(size_t id_, const TFunction &func);
 
+    template<class ...TNodes>
+    Node(size_t id_, const TFunction &func, TNodes& ...nodes);
+
     void setFunction(const TFunction &func);
 
     template<int inputNumber, typename TCurrentOutput, typename ...TCurrentInputs>
     void connectTo(Node<TCurrentOutput, TCurrentInputs...> &node);
+
+    template<class ...TNodes>
+        requires (sizeof...(TNodes) == sizeof...(TInputs))
+    void connectAll(TNodes& ...nodes);
 
     operator bool() const override;
 
@@ -89,6 +96,14 @@ Node<TOutput, TInputs...>::Node(size_t id_, const std::function<TOutput(TInputs.
     function = func;
 }
 
+template <typename TOutput, typename ...TInputs>
+template<class ...TNodes>
+Node<TOutput, TInputs...>::Node(size_t id_, const TFunction &func, TNodes& ...nodes):
+    Node(id_, func)
+{
+    connectAll(nodes...);
+}
+
 template<typename TOutput, typename... TInputs>
 void Node<TOutput, TInputs...>::setFunction(const Node::TFunction &func)
 {
@@ -103,6 +118,17 @@ void Node<TOutput, TInputs...>::connectTo(Node<TCurrentOutput, TCurrentInputs...
         node.template inputComputedCallback<inputNumber>(std::forward<TOutput>(output));
     });
     outputs.push_back(node.getId());
+}
+
+template<typename TOutput, typename... TInputs>
+template<class ...TNodes>
+    requires (sizeof...(TNodes) == sizeof...(TInputs))
+void Node<TOutput, TInputs...>::connectAll(TNodes& ...nodes)
+{
+    [this, &nodes...] <int ...inputsNumbers> (std::integer_sequence<int, inputsNumbers...> is)
+    {
+        (nodes.template connectTo<inputsNumbers>(*this) , ...);
+    }(std::make_integer_sequence<int, sizeof...(TNodes)>());
 }
 
 template<typename TOutput, typename ...TInputs>

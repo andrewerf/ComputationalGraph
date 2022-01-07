@@ -12,8 +12,8 @@ class ComputationalGraph
 public:
     explicit ComputationalGraph(int threadsCount_);
 
-    template <typename TOutput, typename ...TInputs, class TFunc>
-    Node<TOutput, TInputs...>& addNode(const TFunc &func);
+    template <typename TOutput, typename ...TInputs, class ...TArgs>
+    Node<TOutput, TInputs...>& addNode(TArgs&& ...args);
 
     template <typename TOutput, typename ...TInputs>
     Node<TOutput, TInputs...>& addNode();
@@ -46,10 +46,10 @@ ComputationalGraph::ComputationalGraph(int threadsCount_):
     threadsPool(threadsCount_)
 {}
 
-template <typename TOutput, typename ...TInputs, class TFunc>
-Node<TOutput, TInputs...>& ComputationalGraph::addNode(const TFunc &func)
+template <typename TOutput, typename ...TInputs, class ...TArgs>
+Node<TOutput, TInputs...>& ComputationalGraph::addNode(TArgs&& ...args)
 {
-    std::unique_ptr<Node<TOutput, TInputs...>> node{new Node<TOutput, TInputs...>(graph.size(), func)};
+    std::unique_ptr<Node<TOutput, TInputs...>> node{new Node<TOutput, TInputs...>(graph.size(), std::forward<TArgs>(args)...)};
     Node<TOutput, TInputs...> &ret_ref = *node;
     graph.emplace_back(std::move(node));
     return ret_ref;

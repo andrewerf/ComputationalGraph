@@ -1,26 +1,27 @@
 #include <iostream>
+#include <cmath>
 #include <functional>
-#include "ComputationalGraph/DelayQueue.hpp"
+#include <ComputationalGraph/Graph.hpp>
+#include <ComputationalGraph/CommonNodes.h>
+#include <chrono>
 
 using namespace std::chrono_literals;
 
 int main()
 {
-    DelayQueue<std::function<void()>> q;
-    q.push([]{
-        std::cout << 1 << std::endl;
-    }, 10s);
+    ComputationalGraph graph(8);
+    auto &input = graph.addInput<int>();
+    graph.setInput(input.getId(), 10);
 
-    std::thread t([&q]{
-        std::this_thread::sleep_for(2s);
-        q.push([&q]{
-            std::cout << 2 << std::endl;
-        }, 0s);
-    });
-    t.detach();
+    auto &sqr = graph.addNode<int, int>([](int x){return x*x;}, input);
 
-    q.popWait()();
-    q.popWait()();
+    auto &sqrt = graph.addNode<double, int>([](int x){return std::sqrt(x);}, input);
+
+    auto &sum = graph.addNode<FoldNode, double, double>([](double x, double y){return x+y;}, 0, sqr, sqrt);
+
+    graph.run();
+
+    std::cout << sum.getResult().value();
 
     return 0;
 }

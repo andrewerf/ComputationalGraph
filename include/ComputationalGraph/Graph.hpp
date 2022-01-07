@@ -12,6 +12,9 @@ class ComputationalGraph
 public:
     explicit ComputationalGraph(int threadsCount_);
 
+    template <template<typename TOutput_, typename ...TInputs_> class TNode, typename TOutput, typename ...TInputs, class ...TArgs>
+    TNode<TOutput, TInputs...>& addNode(TArgs&& ...args);
+
     template <typename TOutput, typename ...TInputs, class ...TArgs>
     Node<TOutput, TInputs...>& addNode(TArgs&& ...args);
 
@@ -46,13 +49,19 @@ ComputationalGraph::ComputationalGraph(int threadsCount_):
     threadsPool(threadsCount_)
 {}
 
+template <template<typename TOutput_, typename ...TInputs_> class TNode, typename TOutput, typename ...TInputs, class ...TArgs>
+TNode<TOutput, TInputs...>& ComputationalGraph::addNode(TArgs&& ...args)
+{
+    std::unique_ptr<TNode<TOutput, TInputs...>> node{new TNode<TOutput, TInputs...>(graph.size(), std::forward<TArgs>(args)...)};
+    TNode<TOutput, TInputs...> &ret_ref = *node;
+    graph.emplace_back(std::move(node));
+    return ret_ref;
+}
+
 template <typename TOutput, typename ...TInputs, class ...TArgs>
 Node<TOutput, TInputs...>& ComputationalGraph::addNode(TArgs&& ...args)
 {
-    std::unique_ptr<Node<TOutput, TInputs...>> node{new Node<TOutput, TInputs...>(graph.size(), std::forward<TArgs>(args)...)};
-    Node<TOutput, TInputs...> &ret_ref = *node;
-    graph.emplace_back(std::move(node));
-    return ret_ref;
+    return addNode<Node, TOutput, TInputs...>(std::forward<TArgs>(args)...);
 }
 
 template <typename TOutput, typename ...TInputs>
@@ -106,7 +115,7 @@ void ComputationalGraph::onComplete(size_t completedId)
 {
     for(size_t childId : graph[completedId]->getOutputs())
     {
-        if(*graph[childId] && !isScheduled[childId])
+        if(graph[childId]->isReady() && !isScheduled[childId])
         {
             std::lock_guard scheduledLock(scheduledMutex);
             if(!isScheduled[childId])

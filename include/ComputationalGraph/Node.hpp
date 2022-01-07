@@ -13,8 +13,7 @@
 class INode
 {
 public:
-    virtual operator bool() const = 0;
-    virtual void operator()() = 0;
+    virtual bool isReady() const = 0;
     virtual void run() = 0;
     virtual size_t getId() const = 0;
     virtual std::list<size_t> getOutputs() const = 0;
@@ -37,27 +36,26 @@ public:
 
     void setFunction(const TFunction &func);
 
-    template<int inputNumber, typename TCurrentOutput, typename ...TCurrentInputs>
-    void connectTo(Node<TCurrentOutput, TCurrentInputs...> &node);
-
     template<class ...TNodes>
         requires (sizeof...(TNodes) == sizeof...(TInputs))
     void connectAll(TNodes& ...nodes);
 
-    operator bool() const override;
-
-    void operator()() override;
+    bool isReady() const override;
 
     void run() override;
 
     template<int inputNumber, typename T>
     void inputComputedCallback(T &&val);
 
-    std::optional<TOutput> getResult() const;
+    virtual std::optional<TOutput> getResult() const;
 
     size_t getId() const override;
 
     std::list<size_t> getOutputs() const override;
+
+    void addCallback(const TCallback &callback);
+
+    void addCallback(const TCallback &callback, size_t id_);
 
 private:
     std::optional<TOutput> result;
@@ -111,28 +109,18 @@ void Node<TOutput, TInputs...>::setFunction(const Node::TFunction &func)
 }
 
 template<typename TOutput, typename... TInputs>
-template<int inputNumber, typename TCurrentOutput, typename ...TCurrentInputs>
-void Node<TOutput, TInputs...>::connectTo(Node<TCurrentOutput, TCurrentInputs...> &node)
-{
-    outputCallbacks.push_back([&node](TOutput &output){
-        node.template inputComputedCallback<inputNumber>(std::forward<TOutput>(output));
-    });
-    outputs.push_back(node.getId());
-}
-
-template<typename TOutput, typename... TInputs>
 template<class ...TNodes>
     requires (sizeof...(TNodes) == sizeof...(TInputs))
 void Node<TOutput, TInputs...>::connectAll(TNodes& ...nodes)
 {
     [this, &nodes...] <int ...inputsNumbers> (std::integer_sequence<int, inputsNumbers...> is)
     {
-        (nodes.template connectTo<inputsNumbers>(*this) , ...);
+        (connect<inputsNumbers>(nodes, *this) , ...);
     }(std::make_integer_sequence<int, sizeof...(TNodes)>());
 }
 
 template<typename TOutput, typename ...TInputs>
-Node<TOutput, TInputs...>::operator bool() const
+bool Node<TOutput, TInputs...>::isReady() const
 {
     return std::accumulate(inputsSet.begin(), inputsSet.end(), true, std::logical_and());
 }
@@ -140,19 +128,13 @@ Node<TOutput, TInputs...>::operator bool() const
 template<typename TOutput, typename... TInputs>
 void Node<TOutput, TInputs...>::run()
 {
-    if(*this)
+    if(isReady())
     {
         result = std::apply(function, inputs);
         std::for_each(outputCallbacks.begin(), outputCallbacks.end(), [this](auto callback){callback(*result);});
     }
     else
         throw std::runtime_error("Some inputs are not initialized");
-}
-
-template<typename TOutput, typename... TInputs>
-void Node<TOutput, TInputs...>::operator()()
-{
-    run();
 }
 
 template<typename TOutput, typename... TInputs>
@@ -179,6 +161,28 @@ template<typename TOutput, typename... TInputs>
 std::list<size_t> Node<TOutput, TInputs...>::getOutputs() const
 {
     return outputs;
+}
+
+template<typename TOutput, typename... TInputs>
+void Node<TOutput, TInputs...>::addCallback(const TCallback &callback)
+{
+    outputCallbacks.push_back(callback);
+}
+
+template<typename TOutput, typename... TInputs>
+void Node<TOutput, TInputs...>::addCallback(const TCallback &callback, size_t id_)
+{
+    addCallback(callback);
+    outputs.push_back(id_);
+}
+
+
+template<int inputNumber, typename TOutput1, typename ...TInputs1, typename TOutput2, typename ...TInputs2>
+void connect(Node<TOutput1, TInputs1...> &a, Node<TOutput2, TInputs2...> &b)
+{
+    a.addCallback([&b](TOutput1 &output){
+        b.template inputComputedCallback<inputNumber>(std::forward<TOutput1>(output));
+    }, b.getId());
 }
 
 

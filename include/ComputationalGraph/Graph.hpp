@@ -10,28 +10,56 @@
 class ComputationalGraph
 {
 public:
+    /**
+     * @brief Creates ComputationalGraph with ThreadPool with specified count of threads.
+     * @param threadsCount_ count of threads.
+     */
     explicit ComputationalGraph(int threadsCount_);
 
+    /**
+     * @brief Adds node of type TNode to graph.
+     * @tparam TNode type of node (e.g. FoldNode).
+     * @tparam TOutput type of output of the node.
+     * @tparam TInputs variadic type of input of the node.
+     * @tparam TArgs variadic type of args of the TNode constructor.
+     * @param args TNode constructor arguments.
+     * @return reference to the added Node.
+     */
     template <template<typename TOutput_, typename ...TInputs_> class TNode, typename TOutput, typename ...TInputs, class ...TArgs>
     TNode<TOutput, TInputs...>& addNode(TArgs&& ...args);
 
+    /**
+     * This overload just defaults the TNode to Node.
+     */
     template <typename TOutput, typename ...TInputs, class ...TArgs>
     Node<TOutput, TInputs...>& addNode(TArgs&& ...args);
 
-    template <typename TOutput, typename ...TInputs>
-    Node<TOutput, TInputs...>& addNode();
-
+    /**
+     * @brief Adds input Node.
+     * Input node is just a Node with no inputs.
+     * @tparam T type of the output of added node (actually just type of the input).
+     * @return reference to the added Node.
+     */
     template <typename T>
     Node<T>& addInput();
 
+    /**
+     * @brief Sets input to val.
+     * @tparam T type of the input.
+     * @param id input id.
+     * @param val input value.
+     */
     template <typename T>
     void setInput(size_t id, T &&val);
 
+    /**
+     * @brief Run all computations and wait until they are ended.
+     */
     void run();
 
+private:
     inline void onComplete(size_t completedId);
 
-private:
     std::vector<std::unique_ptr<INode>> graph;
     std::vector<bool> isScheduled;
     std::set<size_t> inputsIds;
@@ -62,15 +90,6 @@ template <typename TOutput, typename ...TInputs, class ...TArgs>
 Node<TOutput, TInputs...>& ComputationalGraph::addNode(TArgs&& ...args)
 {
     return addNode<Node, TOutput, TInputs...>(std::forward<TArgs>(args)...);
-}
-
-template <typename TOutput, typename ...TInputs>
-Node<TOutput, TInputs...>& ComputationalGraph::addNode()
-{
-    std::unique_ptr<Node<TOutput, TInputs...>> node{new Node<TOutput, TInputs...>(graph.size())};
-    Node<TOutput, TInputs...> &ret_ref = *node;
-    graph.emplace_back(std::move(node));
-    return ret_ref;
 }
 
 template <typename T>

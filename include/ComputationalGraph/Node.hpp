@@ -13,9 +13,28 @@
 class INode
 {
 public:
+    /**
+     * @brief Checks whether all inputs are already computed or not
+     * @return true if all inputs are computer, false otherwise.
+     */
     virtual bool isReady() const = 0;
+
+    /**
+     * @brief Runs this node.
+     * @throws std::runtime_error if isReady() is false.
+     */
     virtual void run() = 0;
+
+    /**
+     * @brief Returns id of the node
+     * @return the id.
+     */
     virtual size_t getId() const = 0;
+
+    /**
+     * @brief Returns ids of output nodes.
+     * @return ids of the output nodes.
+     */
     virtual std::list<size_t> getOutputs() const = 0;
 };
 
@@ -24,18 +43,56 @@ template <typename TOutput, typename ...TInputs>
 class Node : public INode
 {
 public:
+    /**
+     * @brief The computation type itself.
+     */
     using TFunction = std::function<TOutput(TInputs...)>;
+
+    /**
+     * @brief Callback function type.
+     */
     using TCallback = std::function<void(TOutput &)>;
 
+    /**
+     * @brief Creates empty node.
+     * @param id_ Node's id.
+     */
     explicit Node(size_t id_);
+
+    /**
+     * @brief Move constructor.
+     * @param node
+     */
     Node(Node &&node) noexcept;
+
+    /**
+     * @brief Creates node with specified computation.
+     * @param id_ Node's id.
+     * @param func the computation func :: TInputs... -> TOutput.
+     */
     Node(size_t id_, const TFunction &func);
 
+    /**
+     * @brief Create node with specified computetion and inputs.
+     * @tparam TNodes variadic template for sequence of input Nodes.
+     * @param id_ Node's id.
+     * @param func the computation func :: TInputs... -> TOutput.
+     * @param nodes sequence of input Nodes. i-th element of sequence corresponds to i-th input of created Node.
+     */
     template<class ...TNodes>
     Node(size_t id_, const TFunction &func, TNodes& ...nodes);
 
+    /**
+     * @brief Replaces computation.
+     * @param func new computation.
+     */
     void setFunction(const TFunction &func);
 
+    /**
+     * @brief Connects all nodes to inputs.
+     * @tparam TNodes variadic template for sequence of input Nodes.
+     * @param nodes sequence of input Nodes.
+     */
     template<class ...TNodes>
         requires (sizeof...(TNodes) == sizeof...(TInputs))
     void connectAll(TNodes& ...nodes);
@@ -44,6 +101,11 @@ public:
 
     void run() override;
 
+    /**
+     * @brief Callback for computer input.
+     * @tparam inputNumber the number of computed input.
+     * @param val value of input.
+     */
     template<int inputNumber, typename T>
     void inputComputedCallback(T &&val);
 
@@ -53,8 +115,17 @@ public:
 
     std::list<size_t> getOutputs() const override;
 
+    /**
+     * @brief Adds callback which is called when node is computed.
+     * @param callback the callback
+     */
     void addCallback(const TCallback &callback);
 
+    /**
+     * @brief Adds callback which is called when node is computed.
+     * @param callback the callback
+     * @param id_ id of node which is associated with output of the current node.
+     */
     void addCallback(const TCallback &callback, size_t id_);
 
 protected:

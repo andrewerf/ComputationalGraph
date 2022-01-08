@@ -57,7 +57,7 @@ public:
 
     void addCallback(const TCallback &callback, size_t id_);
 
-private:
+protected:
     std::optional<TOutput> result;
     std::tuple<TInputs...> inputs;
     std::list<size_t> outputs;

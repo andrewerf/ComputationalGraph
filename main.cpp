@@ -2,7 +2,7 @@
 #include <cmath>
 #include <functional>
 #include <ComputationalGraph/Graph.hpp>
-#include <ComputationalGraph/CommonNodes.h>
+#include <ComputationalGraph/FoldNode.h>
 #include <chrono>
 
 using namespace std::chrono_literals;

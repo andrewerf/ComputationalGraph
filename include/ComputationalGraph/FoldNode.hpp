@@ -1,5 +1,5 @@
-#ifndef COMPUTATIONALGRAPH_FOLDNODE_H
-#define COMPUTATIONALGRAPH_FOLDNODE_H
+#ifndef COMPUTATIONALGRAPH_FOLDNODE_HPP
+#define COMPUTATIONALGRAPH_FOLDNODE_HPP
 
 #include "Node.hpp"
 
@@ -65,4 +65,4 @@ void connect(Node<TOutput1, TInputs1...> &a, FoldNode<TOutput2, TInputs2...> &b)
 }
 
 
-#endif //COMPUTATIONALGRAPH_FOLDNODE_H
+#endif //COMPUTATIONALGRAPH_FOLDNODE_HPP

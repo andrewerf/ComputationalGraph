@@ -19,15 +19,8 @@ public:
     template<class ...TNodes>
     FoldNode(size_t id_, const TFunction &func, TOutput init, TNodes& ...nodes);
 
-    bool isReady() const override;
-
-    void run() override;
-
     template <typename T>
     void add(T &&input);
-
-private:
-    TFunction foldFunction;
 };
 
 template<typename TOutput, typename TInput>
@@ -42,10 +35,9 @@ FoldNode<TOutput, TInput>::FoldNode(FoldNode &&node) noexcept:
 
 template<typename TOutput, typename TInput>
 FoldNode<TOutput, TInput>::FoldNode(size_t id_, const FoldNode::TFunction &func, TOutput init):
-    foldFunction(func),
-    TNode(id_)
+    TNode(id_, [init, func](const TLInput &inputs){return std::accumulate(inputs.begin(), inputs.end(), init, func);})
 {
-    TNode::result = init;
+    TNode::inputsSet[0] = true;
 }
 
 template<typename TOutput, typename TInput>
@@ -57,22 +49,10 @@ FoldNode<TOutput, TInput>::FoldNode(size_t id_, const TFunction &func, TOutput i
 }
 
 template<typename TOutput, typename TInput>
-bool FoldNode<TOutput, TInput>::isReady() const
-{
-    return true;
-}
-
-template<typename TOutput, typename TInput>
-void FoldNode<TOutput, TInput>::run()
-{
-    std::for_each(TNode::outputCallbacks.begin(), TNode::outputCallbacks.end(), [this](auto callback){callback(*TNode::result);});
-}
-
-template<typename TOutput, typename TInput>
 template<typename T>
 void FoldNode<TOutput, TInput>::add(T &&input)
 {
-    TNode::result = foldFunction(input, *TNode::result);
+    std::get<0>(TNode::inputs).emplace_back(std::forward<T>(input));
 }
 
 

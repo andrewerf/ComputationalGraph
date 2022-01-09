@@ -61,14 +61,13 @@ private:
     inline void onComplete(size_t completedId);
 
     std::vector<std::unique_ptr<INode>> graph;
-    std::vector<bool> isScheduled;
+    std::vector<std::atomic<bool>> isScheduled;
     std::set<size_t> inputsIds;
     ThreadsPool<> threadsPool;
 
     std::atomic<size_t> completedCount;
     std::condition_variable allCompleted;
     std::mutex completedMutex;
-    std::mutex scheduledMutex;
 };
 
 
@@ -112,18 +111,18 @@ void ComputationalGraph::setInput(size_t id, T &&val)
 void ComputationalGraph::run()
 {
     std::unique_lock completedLock(completedMutex);
-    isScheduled = std::vector<bool>(graph.size(), false);
+    isScheduled = std::vector<std::atomic<bool>>(graph.size());
+    for(size_t i = 0; i < graph.size(); ++i)
+        isScheduled[i] = false;
 
     for(size_t i : inputsIds)
     {
-        graph[i]->run();
         isScheduled[i] = true;
+        threadsPool.submit([i, this]{
+            graph[i]->run();
+            onComplete(i);
+        });
     }
-
-    completedCount = 0;
-
-    for(size_t i : inputsIds)
-        onComplete(i);
 
     allCompleted.wait(completedLock, [this]{
         return completedCount == graph.size();
@@ -134,12 +133,10 @@ void ComputationalGraph::onComplete(size_t completedId)
 {
     for(size_t childId : graph[completedId]->getOutputs())
     {
-        if(graph[childId]->isReady() && !isScheduled[childId])
+        bool expected = false;
+        if(graph[childId]->isReady() && isScheduled[childId].compare_exchange_weak(expected, true))
         {
-            std::lock_guard scheduledLock(scheduledMutex);
-            if(!isScheduled[childId])
-                threadsPool.submit([childId, this]{graph[childId]->run(); onComplete(childId);});
-            isScheduled[childId] = true;
+            threadsPool.submit([childId, this]{graph[childId]->run(); onComplete(childId);});
         }
     }
 

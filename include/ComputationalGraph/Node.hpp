@@ -51,7 +51,7 @@ public:
     /**
      * @brief Callback function type.
      */
-    using TCallback = std::function<void(TOutput &)>;
+    using TCallback = std::function<void(const TOutput &)>;
 
     /**
      * @brief Creates empty node.
@@ -251,8 +251,8 @@ void Node<TOutput, TInputs...>::addCallback(const TCallback &callback, size_t id
 template<int inputNumber, typename TOutput1, typename ...TInputs1, typename TOutput2, typename ...TInputs2>
 void connect(Node<TOutput1, TInputs1...> &a, Node<TOutput2, TInputs2...> &b)
 {
-    a.addCallback([&b](TOutput1 &output){
-        b.template inputComputedCallback<inputNumber>(std::forward<TOutput1>(output));
+    a.addCallback([&b](const TOutput1 &output){
+        b.template inputComputedCallback<inputNumber>(output);
     }, b.getId());
 }
 

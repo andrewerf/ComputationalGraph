@@ -97,7 +97,10 @@ void FoldNode<TOutput, TInput>::run()
     if(!computeInInputNode)
         TNode::run();
     else
-        std::for_each(TNode::outputCallbacks.begin(), TNode::outputCallbacks.end(), [this](auto callback){callback(currentValue);});
+    {
+        TNode::result = currentValue;
+        std::for_each(TNode::outputCallbacks.begin(), TNode::outputCallbacks.end(), [this](auto callback){callback(*TNode::result);});
+    }
 }
 
 template<typename TOutput, typename TInput>
@@ -150,7 +153,7 @@ void FoldNode<TOutput, TInput>::connectFrom(Node<std::vector<TInput>, TInputs1..
         {
             std::lock_guard lock(addMutex);
             for(const auto &v : output)
-                std::get<0>(TNode::inputs).push_back(v);
+                std::get<0>(TNode::inputs)->push_back(v);
         }
         ++inputsReadyCount;
     }, TNode::getId());

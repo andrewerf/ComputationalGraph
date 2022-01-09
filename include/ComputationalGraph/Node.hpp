@@ -46,7 +46,7 @@ public:
     /**
      * @brief The computation type itself.
      */
-    using TFunction = std::function<TOutput(TInputs...)>;
+    using TFunction = std::function<TOutput(const TInputs& ...)>;
 
     /**
      * @brief Callback function type.
@@ -130,7 +130,7 @@ public:
 
 protected:
     std::optional<TOutput> result;
-    std::tuple<TInputs...> inputs;
+    std::tuple<TInputs*...> inputs;
     std::list<size_t> outputs;
     std::array<bool, sizeof...(TInputs)> inputsSet;
     TFunction function;
@@ -159,7 +159,7 @@ Node<TOutput, TInputs...>::Node(Node &&node) noexcept:
 {}
 
 template<typename TOutput, typename ...TInputs>
-Node<TOutput, TInputs...>::Node(size_t id_, const std::function<TOutput(TInputs...)> &func):
+Node<TOutput, TInputs...>::Node(size_t id_, const TFunction &func):
     Node(id_)
 {
     function = func;
@@ -201,7 +201,7 @@ void Node<TOutput, TInputs...>::run()
 {
     if(isReady())
     {
-        result = std::apply(function, inputs);
+        result = std::apply([this](TInputs* ...inputs1){return function(*inputs1...);}, inputs);
         std::for_each(outputCallbacks.begin(), outputCallbacks.end(), [this](auto callback){callback(*result);});
     }
     else
@@ -212,7 +212,7 @@ template<typename TOutput, typename... TInputs>
 template<int inputNumber, typename T>
 void Node<TOutput, TInputs...>::inputComputedCallback(T &&val)
 {
-    std::get<inputNumber>(inputs) = std::forward<T>(val);
+    std::get<inputNumber>(inputs) = const_cast<std::remove_const_t<std::remove_reference_t<T>>*>(&val);
     inputsSet[inputNumber] = true;
 }
 

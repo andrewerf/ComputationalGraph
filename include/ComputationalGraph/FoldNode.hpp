@@ -49,7 +49,10 @@ FoldNode<TOutput, TInput>::FoldNode(size_t id_, bool computeWithInput):
     computeInInputNode(computeWithInput),
     inputsReadyCount(0),
     inputsDeclaredCount(0)
-{}
+{
+    if(!computeInInputNode)
+        std::get<0>(TNode::inputs) = new std::vector<TInput>;
+}
 
 template<typename TOutput, typename TInput>
 FoldNode<TOutput, TInput>::FoldNode(FoldNode &&node) noexcept:
@@ -109,7 +112,7 @@ void FoldNode<TOutput, TInput>::add(const TInput &input)
     else
     {
         std::lock_guard lock(addMutex);
-        std::get<0>(TNode::inputs).emplace_back(input);
+        std::get<0>(TNode::inputs)->emplace_back(input);
     }
 }
 
